@@ -97,7 +97,7 @@ const HomePage = () => {
               A Facebook-inspired platform built exclusively for CCIT students
               to socialize, connect, and engage in a shared digital community.
             </p>
-            <Button className="mt-4" variant="primary">
+            <Button to={`/articles/ccit-connect-app`} className="mt-4" variant="primary">
               View More
             </Button>
           </article>
@@ -117,7 +117,7 @@ const HomePage = () => {
               A convenient marketplace app for NU students to browse, purchase,
               and track orders in one place.
             </p>
-            <Button className="mt-4" variant="primary">
+            <Button to={`/articles/nu-bulldogs-exchange`} className="mt-4" variant="primary">
               View More
             </Button>
           </article>
@@ -137,7 +137,7 @@ const HomePage = () => {
               A simple student profile app showcasing personal information for
               National University Philippines students.
             </p>
-            <Button className="mt-4" variant="primary">
+            <Button to={`/articles/nu-student-profile-app`} className="mt-4" variant="primary">
               View More
             </Button>
           </article>

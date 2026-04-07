@@ -38,7 +38,7 @@ const AboutPage = () => {
               <Button to="/" variant="primary">
                 Back Home
               </Button>
-              <Button to="/articles">Open Articles</Button>
+              <Button to="/articles">Open Portfolios</Button>
             </div>
           </div>
         </div>
@@ -153,7 +153,7 @@ const AboutPage = () => {
               </div>
             </div>
 
-            <Button className="mt-5">View Section</Button>
+            <Button to="/articles" className="mt-5">View Section</Button>
           </div>
         </div>
       </section>
