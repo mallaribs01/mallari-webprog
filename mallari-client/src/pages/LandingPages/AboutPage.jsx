@@ -1,9 +1,9 @@
-import Button from "../components/Button";
-import Picture from "../assets/images/bherliane.png";
-import NUBDE from "../assets/images/nu_bde.png";
-import NUSTUDENT from "../assets/images/nu_student.png";
-import CCITCONNECT from "../assets/images/ccit_connect.png";
-import GRADECHECKER from "../assets/images/grade_checker.png";
+import Button from "../../components/Button";
+import Picture from "../../assets/images/bherliane.png";
+import NUBDE from "../../assets/images/nu_bde.png";
+import NUSTUDENT from "../../assets/images/nu_student.png";
+import CCITCONNECT from "../../assets/images/ccit_connect.png";
+import GRADECHECKER from "../../assets/images/grade_checker.png";
 
 const AboutPage = () => {
   return (

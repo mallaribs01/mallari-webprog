@@ -1,8 +1,8 @@
-import Button from "../components/Button";
-import Picture from "../assets/images/formal_pic.png";
-import NUBDE from "../assets/images/nu_bde.png";
-import CCITCONNECT from "../assets/images/ccit_connect.png";
-import NUSTUDENT from "../assets/images/nu_student.png";
+import Button from "../../components/Button";
+import Picture from "../../assets/images/formal_pic.png";
+import NUBDE from "../../assets/images/nu_bde.png";
+import CCITCONNECT from "../../assets/images/ccit_connect.png";
+import NUSTUDENT from "../../assets/images/nu_student.png";
 
 const HomePage = () => {
   return (

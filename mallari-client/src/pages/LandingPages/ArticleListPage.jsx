@@ -1,16 +1,16 @@
-import Button from "../components/Button";
-import NUBDE from "../assets/images/nu_bde.png";
-import NUSTUDENT from "../assets/images/nu_student.png";
-import CCITCONNECT from "../assets/images/ccit_connect.png";
-import GRADECHECKER from "../assets/images/grade_checker.png";
-import PAPHY from "../assets/images/paphy-website.png";
-import HEALTHY from "../assets/images/healthy_budget.jpg";
-import GAS from "../assets/images/gas_crisis.png";
-import ENERGY from "../assets/images/environment.png";
-import ANIMAL from "../assets/images/save_animals.png";
-import MOTIVATION from "../assets/images/motivation.png";
-import SPECIES from "../assets/images/endangered_species.png";
-import DIGITAL from "../assets/images/digital_wellness.jpg";
+import Button from "../../components/Button";
+import NUBDE from "../../assets/images/nu_bde.png";
+import NUSTUDENT from "../../assets/images/nu_student.png";
+import CCITCONNECT from "../../assets/images/ccit_connect.png";
+import GRADECHECKER from "../../assets/images/grade_checker.png";
+import PAPHY from "../../assets/images/paphy-website.png";
+import HEALTHY from "../../assets/images/healthy_budget.jpg";
+import GAS from "../../assets/images/gas_crisis.png";
+import ENERGY from "../../assets/images/environment.png";
+import ANIMAL from "../../assets/images/save_animals.png";
+import MOTIVATION from "../../assets/images/motivation.png";
+import SPECIES from "../../assets/images/endangered_species.png";
+import DIGITAL from "../../assets/images/digital_wellness.jpg";
 
 
 const ArticleListPage = () => {
