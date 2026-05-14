@@ -1,61 +1,588 @@
-import React from "react";
-import { Typography, Box } from "@mui/material";
+import { useState, useMemo } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  IconButton,
+  InputAdornment,
+  MenuItem,
+  Paper,
+  Stack,
+  Switch,
+  TextField,
+  Typography,
+  useMediaQuery,
+} from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import SearchIcon from "@mui/icons-material/Search";
 import { DataGrid } from "@mui/x-data-grid";
+import usersSeed from "../../data/users.json?raw";
 
-const columns = [
-  { field: "id", headerName: "ID", width: 90 },
-  { field: "firstName", headerName: "First Name", width: 150 },
-  { field: "lastName", headerName: "Last Name", width: 150 },
-  { field: "email", headerName: "Email", width: 200 },
-  { field: "role", headerName: "Role", width: 150 },
-];
+const roles = ["admin", "editor", "viewer"];
+const genders = ["male", "female", "other"];
 
-const rows = [
-  { id: 1, firstName: "Juan", lastName: "Dela Cruz", email: "juan@email.com", role: "Admin" },
-  { id: 2, firstName: "Maria", lastName: "Santos", email: "maria@email.com", role: "User" },
-  { id: 3, firstName: "Pedro", lastName: "Reyes", email: "pedro@email.com", role: "User" },
-  { id: 4, firstName: "Ana", lastName: "Lopez", email: "ana@email.com", role: "Manager" },
-  { id: 5, firstName: "Mark", lastName: "Cruz", email: "mark@email.com", role: "User" },
-];
+const blankForm = {
+  firstName: "",
+  lastName: "",
+  age: "",
+  gender: "",
+  contactNumber: "",
+  email: "",
+  role: "editor",
+  username: "",
+  password: "",
+  address: "",
+  isActive: true,
+};
 
-function UsersPage() {
+const labelize = (value) =>
+  value ? `${value.charAt(0).toUpperCase()}${value.slice(1)}` : "";
+
+const loadUsers = () => {
+  try {
+    return {
+      users: JSON.parse(usersSeed).map((user, index) => ({
+        id: Number(user.id) || index + 1,
+        firstName: String(user.firstName ?? "").trim(),
+        lastName: String(user.lastName ?? "").trim(),
+        age: String(user.age ?? "").trim(),
+        gender: genders.includes(
+          String(user.gender ?? "").trim().toLowerCase()
+        )
+          ? String(user.gender ?? "").trim().toLowerCase()
+          : "",
+        contactNumber: String(user.contactNumber ?? "").trim(),
+        email: String(user.email ?? "").trim().toLowerCase(),
+        role: roles.includes(String(user.role ?? "").trim().toLowerCase())
+          ? String(user.role ?? "").trim().toLowerCase()
+          : "editor",
+        username: String(user.username ?? "").trim().toLowerCase(),
+        password: String(user.password ?? ""),
+        address: String(user.address ?? "").trim(),
+        isActive: typeof user.isActive === "boolean" ? user.isActive : true,
+      })),
+      error: "",
+    };
+  } catch {
+    return {
+      users: [],
+      error: "Unable to read users from src/assets/users.json.",
+    };
+  }
+};
+
+const seed = loadUsers();
+
+const UsersPage = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [users, setUsers] = useState(seed.users);
+  const [modal, setModal] = useState({ open: false, id: null });
+  const [form, setForm] = useState(blankForm);
+  const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
+
+  // ── Enhancement 2: Search & filter state ──────────────────────────────────
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [genderFilter, setGenderFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  // ── Derived filtered rows ──────────────────────────────────────────────────
+  const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return users.filter((user) => {
+      // Search across firstName, lastName, email, username
+      const matchesSearch =
+        !q ||
+        user.firstName.toLowerCase().includes(q) ||
+        user.lastName.toLowerCase().includes(q) ||
+        user.email.toLowerCase().includes(q) ||
+        user.username.toLowerCase().includes(q);
+
+      const matchesRole = !roleFilter || user.role === roleFilter;
+      const matchesGender = !genderFilter || user.gender === genderFilter;
+      const matchesStatus =
+        statusFilter === ""
+          ? true
+          : statusFilter === "active"
+          ? user.isActive
+          : !user.isActive;
+
+      return matchesSearch && matchesRole && matchesGender && matchesStatus;
+    });
+  }, [users, search, roleFilter, genderFilter, statusFilter]);
+
+  const resetForm = () => {
+    setForm({ ...blankForm });
+    setErrors({});
+  };
+
+  const openModal = (user) => {
+    setModal({ open: true, id: user?.id ?? null });
+    setForm(user ? { ...blankForm, ...user } : { ...blankForm });
+    setErrors({});
+  };
+
+  const closeModal = () => {
+    setModal({ open: false, id: null });
+    setShowPassword(false);
+    resetForm();
+  };
+
+  const handleChange = ({ target: { name, value, checked, type } }) => {
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const validate = () => {
+    const nextErrors = {};
+    const email = form.email.trim().toLowerCase();
+    const username = form.username.trim().toLowerCase();
+
+    // Required field checks
+    [
+      ["firstName", "First name"],
+      ["lastName", "Last name"],
+      ["age", "Age"],
+      ["gender", "Gender"],
+      ["contactNumber", "Contact number"],
+      ["email", "Email"],
+      ["role", "Role"],
+      ["username", "Username"],
+      ["password", "Password"],
+      ["address", "Address"],
+    ].forEach(([key, label]) => {
+      if (!String(form[key]).trim()) {
+        nextErrors[key] = `${label} is required.`;
+      }
+    });
+
+    // ── Enhancement 3: Extra validations ──────────────────────────────────
+
+    // Age: numbers only
+    if (!nextErrors.age && !/^\d+$/.test(form.age.trim())) {
+      nextErrors.age = "Age must be a number only.";
+    }
+
+    // Contact number: exactly 11 digits
+    if (!nextErrors.contactNumber && !/^\d{11}$/.test(form.contactNumber.trim())) {
+      nextErrors.contactNumber = "Contact number must be exactly 11 digits.";
+    }
+
+    // Password: at least 8 characters
+    if (!nextErrors.password && form.password.length < 8) {
+      nextErrors.password = "Password must be at least 8 characters.";
+    }
+
+    // Username: no spaces
+    if (!nextErrors.username && /\s/.test(form.username)) {
+      nextErrors.username = "Username must not contain spaces.";
+    }
+
+    // Email format
+    if (!nextErrors.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      nextErrors.email = "Enter a valid email address.";
+    }
+
+    // Duplicate email check
+    if (
+      !nextErrors.email &&
+      users.some((user) => user.id !== modal.id && user.email === email)
+    ) {
+      nextErrors.email = "Email address already exists.";
+    }
+
+    // Duplicate username check
+    if (
+      !nextErrors.username &&
+      users.some((user) => user.id !== modal.id && user.username === username)
+    ) {
+      nextErrors.username = "Username already exists.";
+    }
+
+    return nextErrors;
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const nextErrors = validate();
+
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    const nextUser = {
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      age: form.age.trim(),
+      gender: form.gender.trim().toLowerCase(),
+      contactNumber: form.contactNumber.trim(),
+      email: form.email.trim().toLowerCase(),
+      role: form.role.trim().toLowerCase(),
+      username: form.username.trim().toLowerCase(),
+      password: form.password,
+      address: form.address.trim(),
+      isActive: form.isActive,
+    };
+
+    setUsers((prev) =>
+      modal.id
+        ? prev.map((user) =>
+            user.id === modal.id ? { ...user, ...nextUser } : user
+          )
+        : [
+            ...prev,
+            {
+              id:
+                prev.reduce(
+                  (max, user) => Math.max(max, Number(user.id) || 0),
+                  0
+                ) + 1,
+              ...nextUser,
+            },
+          ]
+    );
+
+    closeModal();
+  };
+
+  const toggleStatus = (id) => {
+    setUsers((prev) =>
+      prev.map((user) =>
+        user.id === id ? { ...user, isActive: !user.isActive } : user
+      )
+    );
+  };
+
+  const fieldProps = (name, label, extra = {}) => ({
+    name,
+    label,
+    value: form[name],
+    onChange: handleChange,
+    error: Boolean(errors[name]),
+    helperText: errors[name],
+    fullWidth: true,
+    ...extra,
+  });
+
+  const columns = [
+    { field: "id", headerName: "ID", width: 80 },
+    {
+      field: "fullName",
+      headerName: "Full Name",
+      flex: 1,
+      minWidth: 170,
+      valueGetter: (_, row) => `${row.firstName} ${row.lastName}`.trim(),
+    },
+    { field: "username", headerName: "Username", minWidth: 150 },
+    { field: "age", headerName: "Age", width: 90 },
+    {
+      field: "gender",
+      headerName: "Gender",
+      minWidth: 110,
+      valueGetter: (_, row) => labelize(row.gender),
+    },
+    { field: "contactNumber", headerName: "Contact Number", minWidth: 160 },
+    { field: "email", headerName: "Email", flex: 1.1, minWidth: 220 },
+    {
+      field: "role",
+      headerName: "Role",
+      minWidth: 120,
+      valueGetter: (_, row) => labelize(row.role),
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      minWidth: 120,
+      sortable: false,
+      renderCell: (row) => (
+        <Chip
+          size="small"
+          label={row.isActive ? "Active" : "Inactive"}
+          color={row.isActive ? "success" : "default"}
+          variant={row.isActive ? "filled" : "outlined"}
+        />
+      ),
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      minWidth: 220,
+      sortable: false,
+      filterable: false,
+      renderCell: (row) => (
+        <Stack direction="row" spacing={1} sx={{ py: 0.5 }}>
+          <Button size="small" variant="outlined" onClick={() => openModal(row)}>
+            Edit
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            color={row.isActive ? "warning" : "success"}
+            onClick={() => toggleStatus(row.id)}
+          >
+            {row.isActive ? "Disable" : "Activate"}
+          </Button>
+        </Stack>
+      ),
+    },
+  ];
+
   return (
-    <Box className="flex w-full flex-col gap-6">
-
-      {/* HEADER */}
-      <section className="border-y-2 border-zinc-900 bg-zinc-50 px-4 py-6">
-        <Typography className="text-3xl font-bold text-zinc-900">
-          Users Management
-        </Typography>
-      </section>
-
-      {/* TABLE */}
-      <section className="border-y-2 border-zinc-900 bg-zinc-50 px-4 py-6">
-        <Box
-          sx={{
-            height: 500,
-            borderRadius: "1.5rem",
-            border: "2px solid #18181b",
-            overflow: "hidden",
-            backgroundColor: "#f4f4f5",
-          }}
+    <Box sx={{ width: "100%", minWidth: 0 }}>
+      {/* Header */}
+      <Box
+        sx={{
+          mb: 3,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 2,
+          flexWrap: "wrap",
+        }}
+      >
+        <Typography variant="h4">Users</Typography>
+        <Button
+          variant="contained"
+          onClick={() => openModal()}
+          sx={{ width: { xs: "100%", sm: "auto" } }}
         >
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            pageSizeOptions={[5, 10]}
-            checkboxSelection
-            sx={{
-              border: "none",
-              "& .MuiDataGrid-columnHeaders": {
-                backgroundColor: "#e4e4e7",
+          Add User
+        </Button>
+      </Box>
+
+      {seed.error ? (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {seed.error}
+        </Alert>
+      ) : null}
+
+      {/* ── Enhancement 2: Search bar + filter dropdowns ─────────────────── */}
+      <Paper sx={{ p: { xs: 1.5, sm: 2 }, mb: 2 }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          alignItems={{ sm: "center" }}
+          flexWrap="wrap"
+        >
+          <TextField
+            placeholder="Search by name, email, or username…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            size="small"
+            sx={{ flex: 2, minWidth: 220 }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
               },
             }}
           />
+
+          <TextField
+            select
+            label="Role"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+            size="small"
+            sx={{ flex: 1, minWidth: 130 }}
+          >
+            <MenuItem value="">All roles</MenuItem>
+            {roles.map((r) => (
+              <MenuItem key={r} value={r}>
+                {labelize(r)}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            select
+            label="Gender"
+            value={genderFilter}
+            onChange={(e) => setGenderFilter(e.target.value)}
+            size="small"
+            sx={{ flex: 1, minWidth: 130 }}
+          >
+            <MenuItem value="">All genders</MenuItem>
+            {genders.map((g) => (
+              <MenuItem key={g} value={g}>
+                {labelize(g)}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            select
+            label="Status"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            size="small"
+            sx={{ flex: 1, minWidth: 130 }}
+          >
+            <MenuItem value="">All statuses</MenuItem>
+            <MenuItem value="active">Active</MenuItem>
+            <MenuItem value="inactive">Inactive</MenuItem>
+          </TextField>
+        </Stack>
+      </Paper>
+
+      {/* Data grid */}
+      <Paper sx={{ p: { xs: 1.5, sm: 2 }, minWidth: 0, overflow: "hidden" }}>
+        {users.length ? (
+          <Box sx={{ height: { xs: 460, sm: 520 }, width: "100%", minWidth: 0 }}>
+            <DataGrid
+              rows={filteredUsers}
+              columns={columns}
+              disableRowSelectionOnClick
+              pageSizeOptions={[5, 10]}
+              initialState={{
+                pagination: { paginationModel: { pageSize: 5, page: 0 } },
+              }}
+              sx={{
+                minWidth: 0,
+                "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": {
+                  outline: "none",
+                },
+              }}
+            />
+          </Box>
+        ) : (
+          <Alert severity="info">
+            No users found. Use Add User to create your first record.
+          </Alert>
+        )}
+      </Paper>
+
+      {/* Add / Edit modal */}
+      <Dialog
+        open={modal.open}
+        onClose={closeModal}
+        fullWidth
+        fullScreen={isMobile}
+        maxWidth="md"
+      >
+        <Box component="form" onSubmit={handleSubmit}>
+          <DialogTitle>{modal.id ? "Edit User" : "Add User"}</DialogTitle>
+          <DialogContent dividers sx={{ px: { xs: 2, sm: 3 } }}>
+            <Stack spacing={2} sx={{ pt: 1 }}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <TextField {...fieldProps("firstName", "First Name")} />
+                <TextField {...fieldProps("lastName", "Last Name")} />
+              </Stack>
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <TextField
+                  {...fieldProps("age", "Age")}
+                  inputProps={{ inputMode: "numeric" }}
+                />
+                <TextField
+                  {...fieldProps("gender", "Gender", { select: true })}
+                >
+                  {genders.map((gender) => (
+                    <MenuItem key={gender} value={gender}>
+                      {labelize(gender)}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <TextField
+                  {...fieldProps("contactNumber", "Contact Number")}
+                  inputProps={{ inputMode: "numeric", maxLength: 11 }}
+                />
+                <TextField
+                  {...fieldProps("email", "Email Address", { type: "email" })}
+                />
+              </Stack>
+
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <TextField {...fieldProps("role", "Role", { select: true })}>
+                  {roles.map((role) => (
+                    <MenuItem key={role} value={role}>
+                      {labelize(role)}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField {...fieldProps("username", "Username")} />
+              </Stack>
+
+              <TextField
+                {...fieldProps("password", "Password", {
+                  type: showPassword ? "text" : "password",
+                  slotProps: {
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            edge="end"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            onMouseDown={(e) => e.preventDefault()}
+                            aria-label={
+                              showPassword ? "Hide password" : "Show password"
+                            }
+                          >
+                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  },
+                })}
+              />
+
+              <TextField
+                {...fieldProps("address", "Address", {
+                  multiline: true,
+                  rows: 3,
+                })}
+              />
+
+              <FormControlLabel
+                control={
+                  <Switch
+                    name="isActive"
+                    checked={form.isActive}
+                    onChange={handleChange}
+                  />
+                }
+                label={
+                  form.isActive
+                    ? "User status: Active"
+                    : "User status: Inactive"
+                }
+              />
+            </Stack>
+          </DialogContent>
+
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button onClick={closeModal}>Cancel</Button>
+            <Button type="submit" variant="contained">
+              {modal.id ? "Update User" : "Save User"}
+            </Button>
+          </DialogActions>
         </Box>
-      </section>
+      </Dialog>
     </Box>
   );
-}
+};
 
 export default UsersPage;
