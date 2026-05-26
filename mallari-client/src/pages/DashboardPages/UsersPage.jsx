@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+
 import {
   Alert,
   Box,
@@ -19,14 +20,23 @@ import {
   Typography,
   useMediaQuery,
 } from "@mui/material";
+
+import {
+  fetchUsers,
+  createUser,
+  updateUser,
+} from "../../services/userService";
+
 import { useTheme } from "@mui/material/styles";
+
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import SearchIcon from "@mui/icons-material/Search";
+
 import { DataGrid } from "@mui/x-data-grid";
-import usersSeed from "../../data/users.json?raw";
 
 const roles = ["admin", "editor", "viewer"];
+
 const genders = ["male", "female", "other"];
 
 const blankForm = {
@@ -36,7 +46,7 @@ const blankForm = {
   gender: "",
   contactNumber: "",
   email: "",
-  role: "editor",
+  type: "editor",
   username: "",
   password: "",
   address: "",
@@ -44,116 +54,208 @@ const blankForm = {
 };
 
 const labelize = (value) =>
-  value ? `${value.charAt(0).toUpperCase()}${value.slice(1)}` : "";
-
-const loadUsers = () => {
-  try {
-    return {
-      users: JSON.parse(usersSeed).map((user, index) => ({
-        id: Number(user.id) || index + 1,
-        firstName: String(user.firstName ?? "").trim(),
-        lastName: String(user.lastName ?? "").trim(),
-        age: String(user.age ?? "").trim(),
-        gender: genders.includes(
-          String(user.gender ?? "").trim().toLowerCase()
-        )
-          ? String(user.gender ?? "").trim().toLowerCase()
-          : "",
-        contactNumber: String(user.contactNumber ?? "").trim(),
-        email: String(user.email ?? "").trim().toLowerCase(),
-        role: roles.includes(String(user.role ?? "").trim().toLowerCase())
-          ? String(user.role ?? "").trim().toLowerCase()
-          : "editor",
-        username: String(user.username ?? "").trim().toLowerCase(),
-        password: String(user.password ?? ""),
-        address: String(user.address ?? "").trim(),
-        isActive: typeof user.isActive === "boolean" ? user.isActive : true,
-      })),
-      error: "",
-    };
-  } catch {
-    return {
-      users: [],
-      error: "Unable to read users from src/assets/users.json.",
-    };
-  }
-};
-
-const seed = loadUsers();
+  value
+    ? `${value.charAt(0).toUpperCase()}${value.slice(1)}`
+    : "";
 
 const UsersPage = () => {
+
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const [users, setUsers] = useState(seed.users);
-  const [modal, setModal] = useState({ open: false, id: null });
+
+  const isMobile = useMediaQuery(
+    theme.breakpoints.down("sm")
+  );
+
+  const [users, setUsers] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+
+  const [modal, setModal] = useState({
+    open: false,
+    id: null,
+  });
+
   const [form, setForm] = useState(blankForm);
+
   const [errors, setErrors] = useState({});
-  const [showPassword, setShowPassword] = useState(false);
 
-  // ── Enhancement 2: Search & filter state ──────────────────────────────────
+  const [showPassword, setShowPassword] =
+    useState(false);
+
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
-  const [genderFilter, setGenderFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
 
-  // ── Derived filtered rows ──────────────────────────────────────────────────
+  const [roleFilter, setRoleFilter] =
+    useState("");
+
+  const [genderFilter, setGenderFilter] =
+    useState("");
+
+  const [statusFilter, setStatusFilter] =
+    useState("");
+
+  // FILTER USERS
   const filteredUsers = useMemo(() => {
+
     const q = search.trim().toLowerCase();
+
     return users.filter((user) => {
-      // Search across firstName, lastName, email, username
+
       const matchesSearch =
         !q ||
-        user.firstName.toLowerCase().includes(q) ||
-        user.lastName.toLowerCase().includes(q) ||
-        user.email.toLowerCase().includes(q) ||
-        user.username.toLowerCase().includes(q);
+        user.firstName
+          ?.toLowerCase()
+          .includes(q) ||
+        user.lastName
+          ?.toLowerCase()
+          .includes(q) ||
+        user.email
+          ?.toLowerCase()
+          .includes(q) ||
+        user.username
+          ?.toLowerCase()
+          .includes(q);
 
-      const matchesRole = !roleFilter || user.role === roleFilter;
-      const matchesGender = !genderFilter || user.gender === genderFilter;
+      const matchesRole =
+        !roleFilter ||
+        user.type === roleFilter;
+
+      const matchesGender =
+        !genderFilter ||
+        user.gender === genderFilter;
+
       const matchesStatus =
         statusFilter === ""
           ? true
           : statusFilter === "active"
-          ? user.isActive
-          : !user.isActive;
+            ? user.isActive
+            : !user.isActive;
 
-      return matchesSearch && matchesRole && matchesGender && matchesStatus;
+      return (
+        matchesSearch &&
+        matchesRole &&
+        matchesGender &&
+        matchesStatus
+      );
+
     });
-  }, [users, search, roleFilter, genderFilter, statusFilter]);
+
+  }, [
+    users,
+    search,
+    roleFilter,
+    genderFilter,
+    statusFilter,
+  ]);
+
+  // LOAD USERS
+  const loadUsers = async () => {
+
+    try {
+
+      setLoading(true);
+
+      const { data } = await fetchUsers();
+
+      setUsers(data.users || []);
+
+    } catch (error) {
+
+      console.error(
+        "Error fetching users:",
+        error
+      );
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  };
+
+  useEffect(() => {
+
+    loadUsers();
+
+  }, []);
 
   const resetForm = () => {
+
     setForm({ ...blankForm });
+
     setErrors({});
+
   };
 
   const openModal = (user) => {
-    setModal({ open: true, id: user?.id ?? null });
-    setForm(user ? { ...blankForm, ...user } : { ...blankForm });
+
+    setModal({
+      open: true,
+      id: user?._id ?? null,
+    });
+
+    setForm(
+      user
+        ? { ...blankForm, ...user }
+        : { ...blankForm }
+    );
+
     setErrors({});
+
   };
 
   const closeModal = () => {
-    setModal({ open: false, id: null });
+
+    setModal({
+      open: false,
+      id: null,
+    });
+
     setShowPassword(false);
+
     resetForm();
+
   };
 
-  const handleChange = ({ target: { name, value, checked, type } }) => {
+  const handleChange = ({
+    target: {
+      name,
+      value,
+      checked,
+      type,
+    },
+  }) => {
+
     setForm((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]:
+        type === "checkbox"
+          ? checked
+          : value,
     }));
+
     if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
+
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+
     }
+
   };
 
+  // VALIDATION
   const validate = () => {
-    const nextErrors = {};
-    const email = form.email.trim().toLowerCase();
-    const username = form.username.trim().toLowerCase();
 
-    // Required field checks
+    const nextErrors = {};
+
+    const email =
+      form.email.trim().toLowerCase();
+
+    const username =
+      form.username.trim().toLowerCase();
+
     [
       ["firstName", "First name"],
       ["lastName", "Last name"],
@@ -161,115 +263,233 @@ const UsersPage = () => {
       ["gender", "Gender"],
       ["contactNumber", "Contact number"],
       ["email", "Email"],
-      ["role", "Role"],
+      ["type", "Type"],
       ["username", "Username"],
       ["password", "Password"],
       ["address", "Address"],
     ].forEach(([key, label]) => {
+
       if (!String(form[key]).trim()) {
-        nextErrors[key] = `${label} is required.`;
+
+        nextErrors[key] =
+          `${label} is required.`;
+
       }
+
     });
 
-    // ── Enhancement 3: Extra validations ──────────────────────────────────
-
-    // Age: numbers only
-    if (!nextErrors.age && !/^\d+$/.test(form.age.trim())) {
-      nextErrors.age = "Age must be a number only.";
-    }
-
-    // Contact number: exactly 11 digits
-    if (!nextErrors.contactNumber && !/^\d{11}$/.test(form.contactNumber.trim())) {
-      nextErrors.contactNumber = "Contact number must be exactly 11 digits.";
-    }
-
-    // Password: at least 8 characters
-    if (!nextErrors.password && form.password.length < 8) {
-      nextErrors.password = "Password must be at least 8 characters.";
-    }
-
-    // Username: no spaces
-    if (!nextErrors.username && /\s/.test(form.username)) {
-      nextErrors.username = "Username must not contain spaces.";
-    }
-
-    // Email format
-    if (!nextErrors.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      nextErrors.email = "Enter a valid email address.";
-    }
-
-    // Duplicate email check
     if (
-      !nextErrors.email &&
-      users.some((user) => user.id !== modal.id && user.email === email)
+      !nextErrors.age &&
+      !/^\d+$/.test(form.age.trim())
     ) {
-      nextErrors.email = "Email address already exists.";
+
+      nextErrors.age =
+        "Age must be numeric.";
+
     }
 
-    // Duplicate username check
+    if (
+      !nextErrors.contactNumber &&
+      !/^\d{11}$/.test(
+        form.contactNumber.trim()
+      )
+    ) {
+
+      nextErrors.contactNumber =
+        "Contact number must be 11 digits.";
+
+    }
+
+    if (
+      !nextErrors.password &&
+      form.password.length < 8
+    ) {
+
+      nextErrors.password =
+        "Password must be at least 8 characters.";
+
+    }
+
     if (
       !nextErrors.username &&
-      users.some((user) => user.id !== modal.id && user.username === username)
+      /\s/.test(form.username)
     ) {
-      nextErrors.username = "Username already exists.";
+
+      nextErrors.username =
+        "Username cannot contain spaces.";
+
+    }
+
+    if (
+      !nextErrors.email &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        email
+      )
+    ) {
+
+      nextErrors.email =
+        "Invalid email address.";
+
+    }
+
+    if (
+      !nextErrors.email &&
+      users.some(
+        (user) =>
+          user._id !== modal.id &&
+          user.email === email
+      )
+    ) {
+
+      nextErrors.email =
+        "Email already exists.";
+
+    }
+
+    if (
+      !nextErrors.username &&
+      users.some(
+        (user) =>
+          user._id !== modal.id &&
+          user.username === username
+      )
+    ) {
+
+      nextErrors.username =
+        "Username already exists.";
+
     }
 
     return nextErrors;
+
   };
 
-  const handleSubmit = (event) => {
+  // SUBMIT
+  const handleSubmit = async (
+    event
+  ) => {
+
     event.preventDefault();
+
     const nextErrors = validate();
 
-    if (Object.keys(nextErrors).length) {
+    if (
+      Object.keys(nextErrors).length
+    ) {
+
       setErrors(nextErrors);
+
       return;
+
     }
 
-    const nextUser = {
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      age: form.age.trim(),
-      gender: form.gender.trim().toLowerCase(),
-      contactNumber: form.contactNumber.trim(),
-      email: form.email.trim().toLowerCase(),
-      role: form.role.trim().toLowerCase(),
-      username: form.username.trim().toLowerCase(),
-      password: form.password,
-      address: form.address.trim(),
-      isActive: form.isActive,
-    };
+    try {
 
-    setUsers((prev) =>
-      modal.id
-        ? prev.map((user) =>
-            user.id === modal.id ? { ...user, ...nextUser } : user
-          )
-        : [
-            ...prev,
-            {
-              id:
-                prev.reduce(
-                  (max, user) => Math.max(max, Number(user.id) || 0),
-                  0
-                ) + 1,
-              ...nextUser,
-            },
-          ]
-    );
+      const nextUser = {
+        firstName:
+          form.firstName.trim(),
+        lastName:
+          form.lastName.trim(),
+        age: form.age.trim(),
+        gender:
+          form.gender
+            .trim()
+            .toLowerCase(),
+        contactNumber:
+          form.contactNumber.trim(),
+        email:
+          form.email
+            .trim()
+            .toLowerCase(),
+        type:
+          form.type
+            .trim()
+            .toLowerCase(),
+        username:
+          form.username
+            .trim()
+            .toLowerCase(),
+        password: form.password,
+        address:
+          form.address.trim(),
+        isActive: form.isActive,
+      };
 
-    closeModal();
+      if (modal.id) {
+
+        const updatedUser = {
+          ...nextUser,
+        };
+
+        if (
+          !updatedUser.password
+        ) {
+
+          delete updatedUser.password;
+
+        }
+
+        await updateUser(
+          modal.id,
+          updatedUser
+        );
+
+      } else {
+
+        await createUser(nextUser);
+
+      }
+
+      await loadUsers();
+
+      closeModal();
+
+    } catch (error) {
+
+      console.error(
+        "Error saving user:",
+        error
+      );
+
+    }
+
   };
 
-  const toggleStatus = (id) => {
-    setUsers((prev) =>
-      prev.map((user) =>
-        user.id === id ? { ...user, isActive: !user.isActive } : user
-      )
-    );
+  // TOGGLE STATUS
+  const toggleStatus = async (id) => {
+
+    try {
+
+      const selectedUser =
+        users.find(
+          (user) =>
+            user._id === id
+        );
+
+      await updateUser(id, {
+        isActive:
+          !selectedUser.isActive,
+      });
+
+      await loadUsers();
+
+    } catch (error) {
+
+      console.error(
+        "Error updating status:",
+        error
+      );
+
+    }
+
   };
 
-  const fieldProps = (name, label, extra = {}) => ({
+  // FIELD PROPS
+  const fieldProps = (
+    name,
+    label,
+    extra = {}
+  ) => ({
     name,
     label,
     value: form[name],
@@ -280,63 +500,129 @@ const UsersPage = () => {
     ...extra,
   });
 
+  // TABLE COLUMNS
   const columns = [
-    { field: "id", headerName: "ID", width: 80 },
     {
       field: "fullName",
       headerName: "Full Name",
       flex: 1,
-      minWidth: 170,
-      valueGetter: (_, row) => `${row.firstName} ${row.lastName}`.trim(),
+      minWidth: 160,
+
+      valueGetter: (_, row) =>
+        `${row.firstName || ""} ${row.lastName || ""
+        }`.trim(),
     },
-    { field: "username", headerName: "Username", minWidth: 150 },
-    { field: "age", headerName: "Age", width: 90 },
+
+    {
+      field: "username",
+      headerName: "Username",
+      width: 130,
+    },
+
+    {
+      field: "age",
+      headerName: "Age",
+      width: 70,
+    },
+
     {
       field: "gender",
       headerName: "Gender",
-      minWidth: 110,
-      valueGetter: (_, row) => labelize(row.gender),
+      width: 100,
+
+      valueGetter: (_, row) =>
+        labelize(row.gender),
     },
-    { field: "contactNumber", headerName: "Contact Number", minWidth: 160 },
-    { field: "email", headerName: "Email", flex: 1.1, minWidth: 220 },
+
     {
-      field: "role",
-      headerName: "Role",
-      minWidth: 120,
-      valueGetter: (_, row) => labelize(row.role),
+      field: "contactNumber",
+      headerName: "Contact",
+      width: 140,
     },
+
+    {
+      field: "email",
+      headerName: "Email",
+      flex: 1,
+      minWidth: 200,
+    },
+
+    {
+      field: "type",
+      headerName: "Role",
+      width: 100,
+
+      valueGetter: (_, row) =>
+        labelize(row.type),
+    },
+
     {
       field: "status",
       headerName: "Status",
-      minWidth: 120,
+      width: 110,
       sortable: false,
-      renderCell: (row) => (
+
+      renderCell: (params) => (
         <Chip
           size="small"
-          label={row.isActive ? "Active" : "Inactive"}
-          color={row.isActive ? "success" : "default"}
-          variant={row.isActive ? "filled" : "outlined"}
+          label={
+            params.row.isActive
+              ? "Active"
+              : "Inactive"
+          }
+          color={
+            params.row.isActive
+              ? "success"
+              : "default"
+          }
+          variant={
+            params.row.isActive
+              ? "filled"
+              : "outlined"
+          }
         />
       ),
     },
+
     {
       field: "actions",
       headerName: "Actions",
-      minWidth: 220,
+      width: 190,
       sortable: false,
       filterable: false,
-      renderCell: (row) => (
-        <Stack direction="row" spacing={1} sx={{ py: 0.5 }}>
-          <Button size="small" variant="outlined" onClick={() => openModal(row)}>
+
+      renderCell: (params) => (
+        <Stack
+          direction="row"
+          spacing={1}
+        >
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() =>
+              openModal(params.row)
+            }
+          >
             Edit
           </Button>
+
           <Button
             size="small"
             variant="contained"
-            color={row.isActive ? "warning" : "success"}
-            onClick={() => toggleStatus(row.id)}
+            color={
+              params.row.isActive
+                ? "warning"
+                : "success"
+            }
+            onClick={() =>
+              toggleStatus(
+                params.row._id
+              )
+            }
           >
-            {row.isActive ? "Disable" : "Activate"}
+            {params.row.isActive
+              ? "Disable"
+              : "Activate"}
           </Button>
         </Stack>
       ),
@@ -344,56 +630,70 @@ const UsersPage = () => {
   ];
 
   return (
-    <Box sx={{ width: "100%", minWidth: 0 }}>
-      {/* Header */}
+    <Box
+      sx={{
+        width: "100%",
+        maxWidth: "100%",
+        overflow: "hidden",
+      }}
+    >
+      {/* HEADER */}
       <Box
         sx={{
           mb: 3,
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent:
+            "space-between",
           alignItems: "center",
           gap: 2,
           flexWrap: "wrap",
         }}
       >
-        <Typography variant="h4">Users</Typography>
+        <Typography variant="h4">
+          Users
+        </Typography>
+
         <Button
           variant="contained"
-          onClick={() => openModal()}
-          sx={{ width: { xs: "100%", sm: "auto" } }}
+          onClick={() =>
+            openModal()
+          }
         >
           Add User
         </Button>
       </Box>
 
-      {seed.error ? (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {seed.error}
-        </Alert>
-      ) : null}
-
-      {/* ── Enhancement 2: Search bar + filter dropdowns ─────────────────── */}
-      <Paper sx={{ p: { xs: 1.5, sm: 2 }, mb: 2 }}>
+      {/* FILTERS */}
+      <Paper
+        sx={{
+          p: 2,
+          mb: 2,
+          overflowX: "auto",
+        }}
+      >
         <Stack
-          direction={{ xs: "column", sm: "row" }}
+          direction={{
+            xs: "column",
+            md: "row",
+          }}
           spacing={2}
-          alignItems={{ sm: "center" }}
-          flexWrap="wrap"
         >
           <TextField
-            placeholder="Search by name, email, or username…"
+            placeholder="Search users..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) =>
+              setSearch(
+                e.target.value
+              )
+            }
             size="small"
-            sx={{ flex: 2, minWidth: 220 }}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              },
+            fullWidth
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
             }}
           />
 
@@ -401,13 +701,25 @@ const UsersPage = () => {
             select
             label="Role"
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(e) =>
+              setRoleFilter(
+                e.target.value
+              )
+            }
             size="small"
-            sx={{ flex: 1, minWidth: 130 }}
+            sx={{
+              minWidth: 140,
+            }}
           >
-            <MenuItem value="">All roles</MenuItem>
+            <MenuItem value="">
+              All Roles
+            </MenuItem>
+
             {roles.map((r) => (
-              <MenuItem key={r} value={r}>
+              <MenuItem
+                key={r}
+                value={r}
+              >
                 {labelize(r)}
               </MenuItem>
             ))}
@@ -417,13 +729,25 @@ const UsersPage = () => {
             select
             label="Gender"
             value={genderFilter}
-            onChange={(e) => setGenderFilter(e.target.value)}
+            onChange={(e) =>
+              setGenderFilter(
+                e.target.value
+              )
+            }
             size="small"
-            sx={{ flex: 1, minWidth: 130 }}
+            sx={{
+              minWidth: 140,
+            }}
           >
-            <MenuItem value="">All genders</MenuItem>
+            <MenuItem value="">
+              All Genders
+            </MenuItem>
+
             {genders.map((g) => (
-              <MenuItem key={g} value={g}>
+              <MenuItem
+                key={g}
+                value={g}
+              >
                 {labelize(g)}
               </MenuItem>
             ))}
@@ -433,45 +757,109 @@ const UsersPage = () => {
             select
             label="Status"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) =>
+              setStatusFilter(
+                e.target.value
+              )
+            }
             size="small"
-            sx={{ flex: 1, minWidth: 130 }}
+            sx={{
+              minWidth: 140,
+            }}
           >
-            <MenuItem value="">All statuses</MenuItem>
-            <MenuItem value="active">Active</MenuItem>
-            <MenuItem value="inactive">Inactive</MenuItem>
+            <MenuItem value="">
+              All Status
+            </MenuItem>
+
+            <MenuItem value="active">
+              Active
+            </MenuItem>
+
+            <MenuItem value="inactive">
+              Inactive
+            </MenuItem>
           </TextField>
         </Stack>
       </Paper>
 
-      {/* Data grid */}
-      <Paper sx={{ p: { xs: 1.5, sm: 2 }, minWidth: 0, overflow: "hidden" }}>
+      {/* TABLE */}
+      <Paper
+        sx={{
+          p: 2,
+          width: "100%",
+          overflow: "hidden",
+        }}
+      >
         {users.length ? (
-          <Box sx={{ height: { xs: 460, sm: 520 }, width: "100%", minWidth: 0 }}>
-            <DataGrid
-              rows={filteredUsers}
-              columns={columns}
-              disableRowSelectionOnClick
-              pageSizeOptions={[5, 10]}
-              initialState={{
-                pagination: { paginationModel: { pageSize: 5, page: 0 } },
-              }}
+          <Box
+            sx={{
+              width: "100%",
+              overflowX: "auto",
+            }}
+          >
+            <Box
               sx={{
-                minWidth: 0,
-                "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader": {
-                  outline: "none",
-                },
+                minWidth: 900,
+                height: 520,
               }}
-            />
+            >
+              <DataGrid
+                rows={filteredUsers}
+                columns={columns}
+                getRowId={(row) =>
+                  row._id
+                }
+                loading={loading}
+                disableRowSelectionOnClick
+                pageSizeOptions={[
+                  5,
+                  10,
+                ]}
+                initialState={{
+                  pagination: {
+                    paginationModel:
+                    {
+                      pageSize: 5,
+                      page: 0,
+                    },
+                  },
+                }}
+                sx={{
+                  border: "none",
+
+                  "& .MuiDataGrid-columnHeaders":
+                  {
+                    backgroundColor:
+                      "#f4f4f5",
+                  },
+
+                  "& .MuiDataGrid-columnHeaderTitle":
+                  {
+                    fontWeight: 600,
+                    fontSize: "14px",
+                  },
+
+                  "& .MuiDataGrid-cell":
+                  {
+                    fontSize: "14px",
+                  },
+
+                  "& .MuiDataGrid-cell, & .MuiDataGrid-columnHeader":
+                  {
+                    outline: "none",
+                  },
+                }}
+              />
+            </Box>
           </Box>
         ) : (
           <Alert severity="info">
-            No users found. Use Add User to create your first record.
+            No users found.
           </Alert>
         )}
       </Paper>
 
-      {/* Add / Edit modal */}
+      {/* MODAL */}
       <Dialog
         open={modal.open}
         onClose={closeModal}
@@ -479,110 +867,216 @@ const UsersPage = () => {
         fullScreen={isMobile}
         maxWidth="md"
       >
-        <Box component="form" onSubmit={handleSubmit}>
-          <DialogTitle>{modal.id ? "Edit User" : "Add User"}</DialogTitle>
-          <DialogContent dividers sx={{ px: { xs: 2, sm: 3 } }}>
-            <Stack spacing={2} sx={{ pt: 1 }}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                <TextField {...fieldProps("firstName", "First Name")} />
-                <TextField {...fieldProps("lastName", "Last Name")} />
+        <Box
+          component="form"
+          onSubmit={handleSubmit}
+        >
+          <DialogTitle>
+            {modal.id
+              ? "Edit User"
+              : "Add User"}
+          </DialogTitle>
+
+          <DialogContent dividers>
+            <Stack
+              spacing={2}
+              sx={{ pt: 1 }}
+            >
+              <Stack
+                direction={{
+                  xs: "column",
+                  sm: "row",
+                }}
+                spacing={2}
+              >
+                <TextField
+                  {...fieldProps(
+                    "firstName",
+                    "First Name"
+                  )}
+                />
+
+                <TextField
+                  {...fieldProps(
+                    "lastName",
+                    "Last Name"
+                  )}
+                />
               </Stack>
 
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+              <Stack
+                direction={{
+                  xs: "column",
+                  sm: "row",
+                }}
+                spacing={2}
+              >
                 <TextField
-                  {...fieldProps("age", "Age")}
-                  inputProps={{ inputMode: "numeric" }}
+                  {...fieldProps(
+                    "age",
+                    "Age"
+                  )}
                 />
+
                 <TextField
-                  {...fieldProps("gender", "Gender", { select: true })}
+                  {...fieldProps(
+                    "gender",
+                    "Gender",
+                    {
+                      select: true,
+                    }
+                  )}
                 >
-                  {genders.map((gender) => (
-                    <MenuItem key={gender} value={gender}>
-                      {labelize(gender)}
-                    </MenuItem>
-                  ))}
+                  {genders.map(
+                    (gender) => (
+                      <MenuItem
+                        key={gender}
+                        value={gender}
+                      >
+                        {labelize(
+                          gender
+                        )}
+                      </MenuItem>
+                    )
+                  )}
                 </TextField>
               </Stack>
 
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                <TextField
-                  {...fieldProps("contactNumber", "Contact Number")}
-                  inputProps={{ inputMode: "numeric", maxLength: 11 }}
-                />
-                <TextField
-                  {...fieldProps("email", "Email Address", { type: "email" })}
-                />
-              </Stack>
+              <TextField
+                {...fieldProps(
+                  "contactNumber",
+                  "Contact Number"
+                )}
+              />
 
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                <TextField {...fieldProps("role", "Role", { select: true })}>
+              <TextField
+                {...fieldProps(
+                  "email",
+                  "Email Address"
+                )}
+              />
+
+              <Stack
+                direction={{
+                  xs: "column",
+                  sm: "row",
+                }}
+                spacing={2}
+              >
+                <TextField
+                  {...fieldProps(
+                    "type",
+                    "Role",
+                    {
+                      select: true,
+                    }
+                  )}
+                >
                   {roles.map((role) => (
-                    <MenuItem key={role} value={role}>
+                    <MenuItem
+                      key={role}
+                      value={role}
+                    >
                       {labelize(role)}
                     </MenuItem>
                   ))}
                 </TextField>
-                <TextField {...fieldProps("username", "Username")} />
+
+                <TextField
+                  {...fieldProps(
+                    "username",
+                    "Username"
+                  )}
+                />
               </Stack>
 
               <TextField
-                {...fieldProps("password", "Password", {
-                  type: showPassword ? "text" : "password",
-                  slotProps: {
-                    input: {
+                {...fieldProps(
+                  "password",
+                  "Password",
+                  {
+                    type:
+                      showPassword
+                        ? "text"
+                        : "password",
+
+                    InputProps: {
                       endAdornment: (
                         <InputAdornment position="end">
                           <IconButton
-                            edge="end"
-                            onClick={() => setShowPassword((prev) => !prev)}
-                            onMouseDown={(e) => e.preventDefault()}
-                            aria-label={
-                              showPassword ? "Hide password" : "Show password"
+                            onClick={() =>
+                              setShowPassword(
+                                (
+                                  prev
+                                ) =>
+                                  !prev
+                              )
                             }
                           >
-                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                            {showPassword
+                              ? <VisibilityOff />
+                              : <Visibility />}
                           </IconButton>
                         </InputAdornment>
                       ),
                     },
-                  },
-                })}
+                  }
+                )}
               />
 
               <TextField
-                {...fieldProps("address", "Address", {
-                  multiline: true,
-                  rows: 3,
-                })}
+                {...fieldProps(
+                  "address",
+                  "Address",
+                  {
+                    multiline: true,
+                    rows: 3,
+                  }
+                )}
               />
 
               <FormControlLabel
                 control={
                   <Switch
                     name="isActive"
-                    checked={form.isActive}
-                    onChange={handleChange}
+                    checked={
+                      form.isActive
+                    }
+                    onChange={
+                      handleChange
+                    }
                   />
                 }
                 label={
                   form.isActive
-                    ? "User status: Active"
-                    : "User status: Inactive"
+                    ? "Active"
+                    : "Inactive"
                 }
               />
             </Stack>
           </DialogContent>
 
-          <DialogActions sx={{ px: 3, py: 2 }}>
-            <Button onClick={closeModal}>Cancel</Button>
-            <Button type="submit" variant="contained">
-              {modal.id ? "Update User" : "Save User"}
+          <DialogActions>
+            <Button
+              onClick={closeModal}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="submit"
+              variant="contained"
+            >
+              {modal.id
+                ? "Update User"
+                : "Save User"}
             </Button>
           </DialogActions>
         </Box>
       </Dialog>
     </Box>
   );
+
 };
 
 export default UsersPage;

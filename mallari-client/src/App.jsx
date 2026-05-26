@@ -1,47 +1,54 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 // HomePage Structure
-import Layout from './layouts/Layout';
-import ArticlePage from './pages/LandingPages/ArticlePage';
-import HomePage from './pages/LandingPages/HomePage';
-import AboutPage from './pages/LandingPages/AboutPage';
-import ArticleListPage from './pages/LandingPages/ArticleListPage';
+import Layout from "./layouts/Layout";
+import ArticlePage from "./pages/LandingPages/ArticlePage";
+import HomePage from "./pages/LandingPages/HomePage";
+import AboutPage from "./pages/LandingPages/AboutPage";
+import ArticleListPage from "./pages/LandingPages/ArticleListPage";
 
-import AuthLayout from './layouts/AuthLayout';
-import SignInPage from './pages/AuthPages/SignInPage';
-import SignUpPage from './pages/AuthPages/SignUpPage';
+// Auth Pages
+import AuthLayout from "./layouts/AuthLayout";
+import SignInPage from "./pages/AuthPages/SignInPage";
+import SignUpPage from "./pages/AuthPages/SignUpPage";
 
-import DashLayout from './layouts/DashLayout';
-import DashboardPage from './pages/DashboardPages/DashboardPage';
-import ReportsPage from './pages/DashboardPages/ReportsPage';
-import UsersPage from './pages/DashboardPages/UsersPage';
+// Dashboard Pages
+import DashLayout from "./layouts/DashLayout";
+import DashboardPage from "./pages/DashboardPages/DashboardPage";
+import ReportsPage from "./pages/DashboardPages/ReportsPage";
+import UsersPage from "./pages/DashboardPages/UsersPage";
+import ArticlesPage from "./pages/DashboardPages/ArticlesPage";
 
-import NotFoundPage from './pages/NotFoundPage';
+// Error Page
+import NotFoundPage from "./pages/NotFoundPage";
 
 const routes = [
   {
-    path: '/',
+    path: "/",
     element: <Layout />,
     errorElement: <NotFoundPage />,
     children: [
       {
-        path: '',
+        path: "",
         element: <HomePage />,
       },
       {
-        path: 'about',
+        path: "about",
         element: <AboutPage />,
       },
       {
-        path: 'articles',
+        path: "articles",
         element: <ArticleListPage />,
       },
       {
-        path: 'articles/:name',
+        // FIXED: changed :name to :id
+        path: "articles/:id",
         element: <ArticlePage />,
       },
     ],
   },
+
+  // Authentication Routes
   {
     path: "auth/",
     element: <AuthLayout />,
@@ -57,6 +64,8 @@ const routes = [
       },
     ],
   },
+
+  // Dashboard Routes
   {
     path: "dashboard/",
     element: <DashLayout />,
@@ -72,8 +81,12 @@ const routes = [
       },
       {
         path: "users",
-        element: <UsersPage />
-      }
+        element: <UsersPage />,
+      },
+      {
+        path: "articles",
+        element: <ArticlesPage />,
+      },
     ],
   },
 ];
@@ -81,11 +94,7 @@ const routes = [
 const router = createBrowserRouter(routes);
 
 function App() {
-  return (
-    <>
-      <RouterProvider router={router} />
-    </>
-  );
+  return <RouterProvider router={router} />;
 }
 
 export default App;
