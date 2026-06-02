@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Button from "../../components/Button";
-import { fetchArticles } from "../../services/articleService";
+import { fetchArticles } from "../../services/ArticleService";
 
 const ArticleListPage = () => {
   const [articles, setArticles] = useState([]);

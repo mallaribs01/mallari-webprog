@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Button from "../../components/Button";
-import { fetchArticles } from "../../services/articleService";
+import { fetchArticles } from "../../services/ArticleService";
 
 function ArticlePage() {
   const { id } = useParams();
