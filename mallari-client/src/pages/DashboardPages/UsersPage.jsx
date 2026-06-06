@@ -25,7 +25,7 @@ import {
   fetchUsers,
   createUser,
   updateUser,
-} from "../../services/userService";
+} from "../../services/UserService";
 
 import { useTheme } from "@mui/material/styles";
 
